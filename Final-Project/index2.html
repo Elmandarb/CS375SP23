@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>EarthWithClouds</title>
+        <style>
+            body { margin: 0; }
+        </style>
+    </head>
+    <body>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r79/three.min.js"></script>
+        <script>
+            /*const _vs = `
+            void main(){
+                gl_Position = projectionMatrix * modelViewMatrix * vec4
+            }`;
+            const _fs = ``;*/
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+            camera.position.z = 50;
+
+            const renderer = new THREE.WebGLRenderer();
+            const dayTexture = new THREE.TextureLoader().load('https://i.imgur.com/HyolhJ6.jpg');
+            const nightTexture = new THREE.TextureLoader().load('https://i.imgur.com/27jGDfL.jpeg');
+            var myUniforms = {
+                sunDirection: {
+                    value: new THREE.Vector3(1, 0, 0)
+                },
+                texture1: { type: "t", value: dayTexture },
+                texture2: { type: "t", value: nightTexture }
+            };
+            //need custom vertex and fragment shaders
+            //blurred line for night and day
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            document.body.appendChild( renderer.domElement );
+            const geometry = new THREE.SphereGeometry( 20, 32, 20 );
+            //const material = new THREE.MeshBasicMaterial( { map: dayTexture } );
+            //const geometry = new THREE.BoxGeometry( 16,16,16,16,16,16,16 );
+            //const material = new THREE.MeshBasicMaterial( { map: dayTexture } );
+            const material = new THREE.ShaderMaterial( { 
+                uniforms: myUniforms,
+                vertexShader: 
+                `
+                varying vec2 vUv;
+                varying vec3 vNormal;
+                varying vec3 vSunDir;
+                uniform vec3 sunDirection;
+                void main() {
+                    vUv = uv;
+                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    vNormal = normalMatrix * normal;
+                    vSunDir = mat3(viewMatrix) * sunDirection;
+                    gl_Position = projectionMatrix * mvPosition;
+                }
+                `,
+                fragmentShader: `
+                    uniform sampler2D texture1;
+                    uniform sampler2D texture2;
+                    varying vec2 vUv;
+                    varying vec3 vNormal;
+                    varying vec3 vSunDir;
+                    void main() {
+                        vec3 dayColor = texture2D(texture1, vUv).rgb;
+                        vec3 nightColor = texture2D(texture2, vUv).rgb;
+                        float Angle = dot(normalize(vNormal), normalize(vSunDir));
+                        Angle = clamp(Angle * 5.0, -1.0, 1.0);
+                        float mixAmount = Angle * 0.5 + 0.6;
+                        vec3 color = mix(nightColor, dayColor, mixAmount);
+                        gl_FragColor = vec4(color, 1.0);
+                    }
+                `
+            } );
+
+            const sphere = new THREE.Mesh( geometry, material );
+            scene.add( sphere );
+            function animate() {
+                requestAnimationFrame( animate );
+
+                //sphere.rotation.x += 0.001;
+                sphere.rotation.y += 0.001;
+                
+
+                renderer.render( scene, camera );
+            };
+
+            animate();
+        </script>
+    
+    </body>
+</html>
